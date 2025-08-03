@@ -297,14 +297,12 @@ def main():
                 st.warning("Nenhum recurso encontrado com o termo pesquisado.")
 
     # Footer
-    # [alanderson.paula@gmail.com](mailto:alanderson.paula@gmail.com)
     st.markdown("---")
     st.markdown(
         """
         <div style=\'text-align: center; color: #666;\'>
             📚 Plano de Estudos CNU 2025 - Banca FGV<br>
-            <a href="mailto:alanderson.paula@gmail.com">Enviar Email alanderson.paula@gmail.com</a><br>
-            alanderson.paula@gmail.com | © 2025
+            <a href="mailto:alanderson.paula@gmail.com">alanderson.paula@gmail.com</a> | © 2025
 
         </div>
         """,
