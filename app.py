@@ -303,7 +303,6 @@ def main():
         """
         <div style=\'text-align: center; color: #666;\'>
             📚 Plano de Estudos CNU 2025 - Banca FGV<br>
-            Desenvolvido para otimizar sua preparação para o concurso<br>
             alanderson.paula@gmail.com
 
         </div>
