@@ -285,14 +285,14 @@ def main():
 
         if selected_week and selected_week in weeks_with_content:
             week_data = weeks_with_content[selected_week]
-            st.subheader(f"📚 {selected_week}")
+            st.subheader(f"{selected_week}")
 
             # Seletor de matéria
             subjects = list(week_data.keys())
             selected_subject = st.selectbox("Selecione a matéria:", subjects)
 
             if selected_subject:
-                st.subheader(f"📖 {selected_subject}")
+                st.subheader(f"{selected_subject}")
                 subject_data = week_data[selected_subject]
 
                 # Exibir recursos da matéria
@@ -300,7 +300,7 @@ def main():
 
                 # Seção para registrar sessão de estudo
                 st.markdown("---")
-                st.subheader("📝 Registrar Sessão de Estudo")
+                st.subheader("Registrar Sessão de Estudo")
                 
                 col1, col2 = st.columns(2)
                 with col1:
@@ -456,7 +456,7 @@ def main():
         st.header("Backup e Configurações")
         
         # Informações da sessão
-        st.subheader("📊 Informações da Sessão Atual")
+        st.subheader("Informações da Sessão Atual")
         
         init_date = datetime.fromisoformat(st.session_state.user_progress["initialization_date"])
         col1, col2 = st.columns(2)
@@ -473,7 +473,7 @@ def main():
                 st.info(f"**Tempo total:** {total_time//60}h {total_time%60}m")
 
         # Backup e Restauração
-        st.subheader("💾 Backup e Restauração")
+        st.subheader("Backup e Restauração")
         
         col1, col2 = st.columns(2)
         
@@ -482,7 +482,7 @@ def main():
             backup_data = export_progress_data()
             
             st.download_button(
-                label="📤 Baixar Backup Completo",
+                label="Baixar Backup Completo",
                 data=backup_data,
                 file_name=f"cnu_progress_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                 mime="application/json",
@@ -490,7 +490,7 @@ def main():
             )
             
             # Mostrar preview dos dados
-            if st.checkbox("🔍 Visualizar dados do backup"):
+            if st.checkbox("Visualizar dados do backup"):
                 st.code(backup_data, language="json")
         
         with col2:
@@ -519,9 +519,9 @@ def main():
                     st.error(f"❌ Erro ao ler arquivo: {str(e)}")
 
         # Reset de dados
-        st.subheader("⚠️ Reset de Dados")
+        st.subheader("Reset de Dados")
         
-        with st.expander("🔴 Área de Reset (Cuidado!)"):
+        with st.expander("Área de Reset (Cuidado!)"):
             st.warning("**Atenção:** Esta ação não pode ser desfeita!")
             
             col1, col2 = st.columns(2)
@@ -548,7 +548,7 @@ def main():
                     st.rerun()
 
         # Estatísticas detalhadas
-        st.subheader("📈 Estatísticas Detalhadas")
+        st.subheader("Estatísticas Detalhadas")
         
         if st.session_state.user_progress.get('study_sessions'):
             sessions_df = pd.DataFrame(st.session_state.user_progress['study_sessions'])
