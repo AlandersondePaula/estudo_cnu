@@ -147,7 +147,7 @@ def create_study_schedule(start_date, end_date_fixed, weeks_data):
 
         current_date = week_end + timedelta(days=1)
 
-    return schedule
+    return schedule, avg_days_per_week
 
 # Função para exibir recursos de uma matéria
 def display_subject_resources(subject_data, week_name, subject_name):
@@ -250,7 +250,7 @@ def main():
         st.write(f"**Data de término dos estudos para a prova:** {end_date_fixed.strftime('%d/%m/%Y')}")
 
         # Criar cronograma
-        schedule = create_study_schedule(start_date, end_date_fixed, study_data)
+        schedule, avg_days_per_week = create_study_schedule(start_date, end_date_fixed, study_data)
 
         # Exibir cronograma em tabela
         if schedule:
