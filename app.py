@@ -92,7 +92,7 @@ def display_subject_resources(subject_data):
 
 def main():
     # Título principal
-    st.title("📚 Plano de Estudos CNU 2025")
+    st.title("Plano de Estudos CNU 2025")
     st.subheader(
         "Analista de Gestão em Pesquisa e Investigação Biomédica (B4-13-B)")
 
@@ -104,7 +104,7 @@ def main():
         return
 
     # Sidebar para navegação
-    st.sidebar.title("🗂️ Navegação")
+    st.sidebar.title("Navegação")
 
     # Opções de visualização
     view_option = st.sidebar.selectbox(
@@ -114,7 +114,7 @@ def main():
     )
 
     if view_option == "📅 Cronograma Geral":
-        st.header("📅 Cronograma de Estudos")
+        st.header("Cronograma de Estudos")
 
         # Seletor de data de início
         start_date = st.date_input(
@@ -156,7 +156,7 @@ def main():
                 st.metric("Duração (dias)", duration)
 
     elif view_option == "📖 Estudo por Semana":
-        st.header("📖 Estudo Detalhado por Semana")
+        st.header("Estudo Detalhado por Semana")
 
         # Filtrar semanas que têm conteúdo
         weeks_with_content = {k: v for k, v in study_data.items() if v}
@@ -187,7 +187,7 @@ def main():
                 display_subject_resources(subject_data)
 
     elif view_option == "📊 Progresso":
-        st.header("📊 Acompanhamento de Progresso")
+        st.header("Acompanhamento de Progresso")
 
         # Inicializar session state se necessário
         if "completed_resources" not in st.session_state:
@@ -260,7 +260,7 @@ def main():
             st.rerun()
 
     elif view_option == "🔍 Buscar Recursos":
-        st.header("🔍 Buscar Recursos")
+        st.header("Buscar Recursos")
 
         # Campo de busca
         search_term = st.text_input(
@@ -301,7 +301,7 @@ def main():
     st.markdown(
         """
         <div style=\'text-align: center; color: #666;\'>
-            📚 Plano de Estudos CNU 2025 - Banca FGV<br>
+            Plano de Estudos CNU 2025 - Banca FGV<br>
             <a href="mailto:alanderson.paula@gmail.com?subject=Projeto Streamlit CNU 2025">alanderson.paula@gmail.com</a> | © 2025
 
         </div>
