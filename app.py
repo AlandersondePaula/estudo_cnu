@@ -1,5 +1,7 @@
 import json
+import os
 from datetime import datetime, timedelta
+import base64
 
 import pandas as pd
 import streamlit as st
@@ -12,17 +14,100 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Carregamento dos dados
+# Arquivo do plano de estudos
+STUDY_PLAN_FILE = "study_plan.json"
 
-
+# Carregamento dos dados do plano de estudos
 @st.cache_data
 def load_study_plan():
-    with open("study_plan.json", "r", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(STUDY_PLAN_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        st.error(f"Arquivo {STUDY_PLAN_FILE} não encontrado!")
+        return {}
+
+# Funções para gerenciar dados do usuário usando session_state
+def initialize_user_data():
+    """Inicializa os dados do usuário no session_state se não existirem"""
+    if "user_progress" not in st.session_state:
+        st.session_state.user_progress = {
+            "start_date": datetime.now().date().isoformat(),
+            "completed_resources": [],
+            "settings": {
+                "notifications": True,
+                "theme": "light"
+            },
+            "last_access": datetime.now().isoformat(),
+            "study_sessions": [],
+            "initialization_date": datetime.now().isoformat()
+        }
+
+def update_last_access():
+    """Atualiza o último acesso"""
+    if "user_progress" in st.session_state:
+        st.session_state.user_progress["last_access"] = datetime.now().isoformat()
+
+def export_progress_data():
+    """Exporta os dados de progresso para download"""
+    if "user_progress" in st.session_state:
+        progress_data = st.session_state.user_progress.copy()
+        progress_data["export_date"] = datetime.now().isoformat()
+        return json.dumps(progress_data, ensure_ascii=False, indent=2)
+    return "{}"
+
+def import_progress_data(imported_data):
+    """Importa dados de progresso de um backup"""
+    try:
+        data = json.loads(imported_data)
+        # Validar estrutura básica
+        required_keys = ["start_date", "completed_resources", "study_sessions"]
+        if all(key in data for key in required_keys):
+            st.session_state.user_progress = data
+            st.session_state.user_progress["last_access"] = datetime.now().isoformat()
+            return True
+        else:
+            return False
+    except json.JSONDecodeError:
+        return False
+
+def add_completed_resource(resource_key):
+    """Adiciona um recurso como concluído"""
+    initialize_user_data()
+    if resource_key not in st.session_state.user_progress["completed_resources"]:
+        st.session_state.user_progress["completed_resources"].append(resource_key)
+        update_last_access()
+
+def remove_completed_resource(resource_key):
+    """Remove um recurso dos concluídos"""
+    initialize_user_data()
+    if resource_key in st.session_state.user_progress["completed_resources"]:
+        st.session_state.user_progress["completed_resources"].remove(resource_key)
+        update_last_access()
+
+def update_start_date(new_date):
+    """Atualiza a data de início"""
+    initialize_user_data()
+    st.session_state.user_progress["start_date"] = new_date.isoformat()
+    update_last_access()
+
+def add_study_session(duration_minutes, subjects_studied):
+    """Adiciona uma sessão de estudo"""
+    initialize_user_data()
+    session = {
+        "date": datetime.now().isoformat(),
+        "duration_minutes": duration_minutes,
+        "subjects": subjects_studied
+    }
+    st.session_state.user_progress["study_sessions"].append(session)
+    update_last_access()
+
+def is_resource_completed(resource_key):
+    """Verifica se um recurso está concluído"""
+    initialize_user_data()
+    return resource_key in st.session_state.user_progress["completed_resources"]
 
 # Função para criar cronograma de estudos
-
-
 def create_study_schedule(start_date, end_date_fixed, weeks_data):
     schedule = []
 
@@ -65,42 +150,67 @@ def create_study_schedule(start_date, end_date_fixed, weeks_data):
     return schedule
 
 # Função para exibir recursos de uma matéria
-
-
-def display_subject_resources(subject_data):
+def display_subject_resources(subject_data, week_name, subject_name):
     for resource_type, resources in subject_data.items():
         if resources:
             st.subheader(f"📋 {resource_type}")
 
             for i, resource in enumerate(resources, 1):
-                with st.expander(f"{i}. {resource['description'][:80]}..."):
+                # Criar chave única para o recurso
+                resource_key = f"{week_name}_{subject_name}_{resource_type}_{i}_{resource['description'][:20]}"
+                
+                # Verificar se já foi concluído
+                is_completed = is_resource_completed(resource_key)
+                
+                with st.expander(f"{'✅' if is_completed else '📄'} {i}. {resource['description'][:80]}..."):
                     st.write(f"**Descrição:** {resource['description']}")
                     st.write(f"**Link:** [Acessar recurso]({resource['url']})")
 
-                    # Botão para marcar como concluído
-                    key = f"{resource_type}_{i}_{resource['description'][:20]}"
-                    if st.button("✅ Marcar como concluído", key=key):
-                        if "completed_resources" not in st.session_state:
-                            st.session_state.completed_resources = set()
-                        st.session_state.completed_resources.add(key)
-                        st.success("Recurso marcado como concluído!")
-
-                    # Mostrar se já foi concluído
-                    if "completed_resources" in st.session_state and key in st.session_state.completed_resources:
-                        st.success("✅ Concluído")
-
+                    # Botão para marcar/desmarcar como concluído
+                    col1, col2 = st.columns([3, 1])
+                    
+                    with col2:
+                        if is_completed:
+                            if st.button("❌ Desmarcar", key=f"uncheck_{resource_key}"):
+                                remove_completed_resource(resource_key)
+                                st.success("Recurso desmarcado!")
+                                st.rerun()
+                        else:
+                            if st.button("✅ Concluído", key=f"check_{resource_key}"):
+                                add_completed_resource(resource_key)
+                                st.success("Recurso marcado como concluído!")
+                                st.rerun()
+                    
+                    with col1:
+                        if is_completed:
+                            st.success("✅ Concluído")
 
 def main():
+    # Inicializar dados do usuário
+    initialize_user_data()
+    update_last_access()
+
     # Título principal
     st.title("Plano de Estudos CNU 2025 - Engenharias e Arquitetura")
-    st.subheader(
-        "Analista de Gestão em Pesquisa e Investigação Biomédica (B4-13-B)")
+    st.subheader("Analista de Gestão em Pesquisa e Investigação Biomédica (B4-13-B)")
 
-    # Carregamento dos dados
+    # Indicador de progresso salvo
+    completed_count = len(st.session_state.user_progress["completed_resources"])
+    st.sidebar.success(f"💾 {completed_count} recursos concluídos salvos")
+    
+    # Mostrar último acesso
+    if "last_access" in st.session_state.user_progress:
+        last_access = datetime.fromisoformat(st.session_state.user_progress["last_access"])
+        st.sidebar.info(f"Última atualização: {last_access.strftime('%d/%m/%Y %H:%M')}")
+
+    # Carregamento dos dados do plano de estudos
     try:
         study_data = load_study_plan()
-    except FileNotFoundError:
-        st.error("Arquivo de dados não encontrado. Certifique-se de que o arquivo \"study_plan.json\" está no diretório correto.")
+        if not study_data:
+            st.error("Nenhum dado de estudo encontrado.")
+            return
+    except Exception as e:
+        st.error(f"Erro ao carregar plano de estudos: {str(e)}")
         return
 
     # Sidebar para navegação
@@ -109,19 +219,25 @@ def main():
     # Opções de visualização
     view_option = st.sidebar.selectbox(
         "Escolha a visualização:",
-        ["📅 Cronograma Geral", "📖 Estudo por Semana",
-            "📊 Progresso", "🔍 Buscar Recursos"]
+        ["📅 Cronograma Geral", "📖 Estudo por Semana", "📊 Progresso", "🔍 Buscar Recursos", "⚙️ Dados e Backup"]
     )
 
     if view_option == "📅 Cronograma Geral":
         st.header("Cronograma de Estudos")
 
-        # Seletor de data de início
+        # Seletor de data de início (carrega data salva)
+        saved_start_date = datetime.fromisoformat(st.session_state.user_progress["start_date"]).date()
+        
         start_date = st.date_input(
             "Data de início dos estudos:",
-            value=datetime.now().date(),
+            value=saved_start_date,
             help="Selecione quando você pretende começar os estudos"
         )
+
+        # Verificar se a data mudou e salvar
+        if start_date != saved_start_date:
+            update_start_date(start_date)
+            st.success("✅ Data de início salva automaticamente!")
 
         # Data de término fixa
         end_date_fixed = datetime(2025, 10, 4).date() # 04/10/2025
@@ -133,8 +249,7 @@ def main():
         # Exibir cronograma em tabela
         if schedule:
             df_schedule = pd.DataFrame(schedule)
-            df_schedule["Matérias"] = df_schedule["Matérias"].apply(
-                lambda x: ", ".join(x))
+            df_schedule["Matérias"] = df_schedule["Matérias"].apply(lambda x: ", ".join(x))
             st.dataframe(df_schedule, use_container_width=True)
 
             # Estatísticas
@@ -142,15 +257,9 @@ def main():
             with col1:
                 st.metric("Total de Semanas", len(schedule))
             with col2:
-                # Corrigido: Somar o comprimento das listas de matérias diretamente
-                total_subjects = sum(
-                    len(week_data["Matérias"]) for week_data in schedule if week_data["Matérias"])
+                total_subjects = sum(len(week_data["Matérias"]) for week_data in schedule if week_data["Matérias"])
                 st.metric("Total de Matérias", total_subjects)
             with col3:
-                # end_date = datetime.strptime(
-                #     schedule[-1]["Data Fim"], "%d/%m/%Y")
-                # duration = (end_date - start_date).timedelta(days=0)
-                # st.metric("Duração (dias)", duration)
                 end_date = datetime.strptime(schedule[-1]["Data Fim"], "%d/%m/%Y").date()
                 duration = (end_date - start_date).days
                 st.metric("Duração (dias)", duration)
@@ -162,40 +271,41 @@ def main():
         weeks_with_content = {k: v for k, v in study_data.items() if v}
 
         # Seletor de semana
-        selected_week = st.selectbox(
-            "Selecione a semana:",
-            list(weeks_with_content.keys())
-        )
+        selected_week = st.selectbox("Selecione a semana:", list(weeks_with_content.keys()))
 
         if selected_week and selected_week in weeks_with_content:
             week_data = weeks_with_content[selected_week]
-
             st.subheader(f"📚 {selected_week}")
 
             # Seletor de matéria
             subjects = list(week_data.keys())
-            selected_subject = st.selectbox(
-                "Selecione a matéria:",
-                subjects
-            )
+            selected_subject = st.selectbox("Selecione a matéria:", subjects)
 
             if selected_subject:
                 st.subheader(f"📖 {selected_subject}")
                 subject_data = week_data[selected_subject]
 
                 # Exibir recursos da matéria
-                display_subject_resources(subject_data)
+                display_subject_resources(subject_data, selected_week, selected_subject)
+
+                # Seção para registrar sessão de estudo
+                st.markdown("---")
+                st.subheader("📝 Registrar Sessão de Estudo")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    study_duration = st.number_input("Duração do estudo (minutos):", min_value=1, max_value=480, value=60)
+                with col2:
+                    if st.button("💾 Registrar Sessão"):
+                        add_study_session(study_duration, [selected_subject])
+                        st.success(f"✅ Sessão de {study_duration} minutos registrada para {selected_subject}!")
 
     elif view_option == "📊 Progresso":
         st.header("Acompanhamento de Progresso")
 
-        # Inicializar session state se necessário
-        if "completed_resources" not in st.session_state:
-            st.session_state.completed_resources = set()
-
         # Calcular estatísticas de progresso
         total_resources = 0
-        completed_resources = len(st.session_state.completed_resources)
+        completed_resources = len(st.session_state.user_progress["completed_resources"])
 
         for week_name, week_data in study_data.items():
             for subject_name, subject_data in week_data.items():
@@ -213,8 +323,7 @@ def main():
 
         with col3:
             if total_resources > 0:
-                progress_percentage = (
-                    completed_resources / total_resources) * 100
+                progress_percentage = (completed_resources / total_resources) * 100
                 st.metric("Progresso", f"{progress_percentage:.1f}%")
             else:
                 st.metric("Progresso", "0%")
@@ -224,10 +333,39 @@ def main():
             progress = completed_resources / total_resources
             st.progress(progress)
 
+            # Estatísticas de sessões de estudo
+            study_sessions = st.session_state.user_progress.get("study_sessions", [])
+            if study_sessions:
+                st.subheader("📈 Estatísticas de Estudo")
+                
+                total_study_time = sum(session["duration_minutes"] for session in study_sessions)
+                total_sessions = len(study_sessions)
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Total de Sessões", total_sessions)
+                with col2:
+                    st.metric("Tempo Total", f"{total_study_time//60}h {total_study_time%60}m")
+                with col3:
+                    if total_sessions > 0:
+                        avg_session = total_study_time / total_sessions
+                        st.metric("Média por Sessão", f"{int(avg_session)} min")
+
+                # Mostrar últimas sessões
+                st.subheader("🕒 Últimas Sessões de Estudo")
+                recent_sessions = study_sessions[-5:] if len(study_sessions) > 5 else study_sessions
+                
+                for session in reversed(recent_sessions):
+                    session_date = datetime.fromisoformat(session["date"]).strftime("%d/%m/%Y %H:%M")
+                    subjects_str = ", ".join(session["subjects"])
+                    st.write(f"📅 {session_date} - ⏱️ {session['duration_minutes']}min - 📚 {subjects_str}")
+
             # Gráfico de progresso por semana
-            st.subheader("📈 Progresso por Semana")
+            st.subheader("📊 Progresso por Semana")
 
             week_progress = {}
+            completed_set = set(st.session_state.user_progress["completed_resources"])
+            
             for week_name, week_data in study_data.items():
                 if not week_data:
                     continue
@@ -240,31 +378,22 @@ def main():
                         week_total += len(resources)
                         # Contar recursos concluídos desta semana
                         for i, resource in enumerate(resources, 1):
-                            key = f"{resource_type}_{i}_{resource['description'][:20]}"
-                            if key in st.session_state.completed_resources:
+                            resource_key = f"{week_name}_{subject_name}_{resource_type}_{i}_{resource['description'][:20]}"
+                            if resource_key in completed_set:
                                 week_completed += 1
 
                 if week_total > 0:
-                    week_progress[week_name] = (
-                        week_completed / week_total) * 100
+                    week_progress[week_name] = (week_completed / week_total) * 100
 
             if week_progress:
-                df_progress = pd.DataFrame(list(week_progress.items()), columns=[
-                                           "Semana", "Progresso (%)"])
+                df_progress = pd.DataFrame(list(week_progress.items()), columns=["Semana", "Progresso (%)"])
                 st.bar_chart(df_progress.set_index("Semana"))
-
-        # Botão para resetar progresso
-        if st.button("🔄 Resetar Progresso"):
-            st.session_state.completed_resources = set()
-            st.success("Progresso resetado!")
-            st.rerun()
 
     elif view_option == "🔍 Buscar Recursos":
         st.header("Buscar Recursos")
 
         # Campo de busca
-        search_term = st.text_input(
-            "Digite o termo de busca:", placeholder="Ex: português, questões, PDF...")
+        search_term = st.text_input("Digite o termo de busca:", placeholder="Ex: português, questões, PDF...")
 
         if search_term:
             search_results = []
@@ -272,43 +401,165 @@ def main():
             for week_name, week_data in study_data.items():
                 for subject_name, subject_data in week_data.items():
                     for resource_type, resources in subject_data.items():
-                        for resource in resources:
+                        for i, resource in enumerate(resources, 1):
                             if search_term.lower() in resource['description'].lower():
+                                resource_key = f"{week_name}_{subject_name}_{resource_type}_{i}_{resource['description'][:20]}"
+                                is_completed = is_resource_completed(resource_key)
+                                
                                 search_results.append({
                                     "Semana": week_name,
                                     "Matéria": subject_name,
                                     "Tipo": resource_type,
                                     "Descrição": resource['description'],
-                                    "URL": resource['url']
+                                    "URL": resource['url'],
+                                    "Concluído": "✅" if is_completed else "❌",
+                                    "Key": resource_key
                                 })
 
             if search_results:
                 st.success(f"Encontrados {len(search_results)} recursos:")
 
                 for i, result in enumerate(search_results, 1):
-                    with st.expander(f"{i}. {result['Descrição'][:80]}..."):
+                    is_completed = result["Concluído"] == "✅"
+                    with st.expander(f"{result['Concluído']} {i}. {result['Descrição'][:80]}..."):
                         st.write(f"**Semana:** {result['Semana']}")
                         st.write(f"**Matéria:** {result['Matéria']}")
                         st.write(f"**Tipo:** {result['Tipo']}")
                         st.write(f"**Descrição:** {result['Descrição']}")
-                        st.write(
-                            f"**Link:** [Acessar recurso]({result['URL']})")
+                        st.write(f"**Link:** [Acessar recurso]({result['URL']})")
+                        
+                        # Botão para marcar/desmarcar
+                        if is_completed:
+                            if st.button("❌ Desmarcar", key=f"search_uncheck_{i}"):
+                                remove_completed_resource(result["Key"])
+                                st.success("Recurso desmarcado!")
+                                st.rerun()
+                        else:
+                            if st.button("✅ Marcar como concluído", key=f"search_check_{i}"):
+                                add_completed_resource(result["Key"])
+                                st.success("Recurso marcado como concluído!")
+                                st.rerun()
             else:
                 st.warning("Nenhum recurso encontrado com o termo pesquisado.")
 
-    # Footer
+    elif view_option == "⚙️ Dados e Backup":
+        st.header("Backup e Configurações")
+        
+        # Informações da sessão
+        st.subheader("📊 Informações da Sessão Atual")
+        
+        init_date = datetime.fromisoformat(st.session_state.user_progress["initialization_date"])
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.info(f"**Sessão iniciada:** {init_date.strftime('%d/%m/%Y %H:%M')}")
+            st.info(f"**Recursos concluídos:** {len(st.session_state.user_progress['completed_resources'])}")
+        
+        with col2:
+            total_sessions = len(st.session_state.user_progress.get('study_sessions', []))
+            st.info(f"**Sessões de estudo:** {total_sessions}")
+            if st.session_state.user_progress.get('study_sessions'):
+                total_time = sum(s['duration_minutes'] for s in st.session_state.user_progress['study_sessions'])
+                st.info(f"**Tempo total:** {total_time//60}h {total_time%60}m")
+
+        # Backup e Restauração
+        st.subheader("💾 Backup e Restauração")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write("**Fazer Backup:**")
+            backup_data = export_progress_data()
+            
+            st.download_button(
+                label="📤 Baixar Backup Completo",
+                data=backup_data,
+                file_name=f"cnu_progress_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json",
+                help="Baixe este arquivo para fazer backup do seu progresso"
+            )
+            
+            # Mostrar preview dos dados
+            if st.checkbox("🔍 Visualizar dados do backup"):
+                st.code(backup_data, language="json")
+        
+        with col2:
+            st.write("**Restaurar Backup:**")
+            uploaded_file = st.file_uploader(
+                "Selecione um arquivo de backup",
+                type=['json'],
+                help="Carregue um arquivo de backup para restaurar seu progresso"
+            )
+            
+            if uploaded_file is not None:
+                try:
+                    backup_content = uploaded_file.read().decode('utf-8')
+                    
+                    if st.button("🔄 Restaurar Backup"):
+                        if import_progress_data(backup_content):
+                            st.success("✅ Backup restaurado com sucesso!")
+                            st.balloons()
+                            # Pequeno delay para mostrar a mensagem antes do rerun
+                            import time
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error("❌ Erro ao restaurar backup. Verifique se o arquivo está correto.")
+                except Exception as e:
+                    st.error(f"❌ Erro ao ler arquivo: {str(e)}")
+
+        # Reset de dados
+        st.subheader("⚠️ Reset de Dados")
+        
+        with st.expander("🔴 Área de Reset (Cuidado!)"):
+            st.warning("**Atenção:** Esta ação não pode ser desfeita!")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button("🗑️ Resetar apenas progresso"):
+                    st.session_state.user_progress["completed_resources"] = []
+                    update_last_access()
+                    st.success("Progresso resetado!")
+                    st.rerun()
+            
+            with col2:
+                if st.button("💥 Reset completo"):
+                    # Criar dados padrão
+                    st.session_state.user_progress = {
+                        "start_date": datetime.now().date().isoformat(),
+                        "completed_resources": [],
+                        "settings": {"notifications": True, "theme": "light"},
+                        "last_access": datetime.now().isoformat(),
+                        "study_sessions": [],
+                        "initialization_date": datetime.now().isoformat()
+                    }
+                    st.success("Reset completo realizado!")
+                    st.rerun()
+
+        # Estatísticas detalhadas
+        st.subheader("📈 Estatísticas Detalhadas")
+        
+        if st.session_state.user_progress.get('study_sessions'):
+            sessions_df = pd.DataFrame(st.session_state.user_progress['study_sessions'])
+            sessions_df['date'] = pd.to_datetime(sessions_df['date']).dt.strftime('%d/%m/%Y')
+            sessions_df['subjects'] = sessions_df['subjects'].apply(lambda x: ', '.join(x))
+            
+            st.write("**Histórico de Sessões de Estudo:**")
+            st.dataframe(sessions_df, use_container_width=True)
+
+    # Footer com informações importantes
     st.markdown("---")
     st.markdown(
-        """
-        <div style=\'text-align: center; color: #666;\'>
+        f"""
+        <div style='text-align: center; color: #666;'>
             Plano de Estudos CNU 2025 - Banca FGV<br>
             <a href="mailto:alanderson.paula@gmail.com?subject=Projeto Streamlit CNU 2025">alanderson.paula@gmail.com</a> | © 2025
-
+            <br><small>💾 Progresso salvo na sessão - {len(st.session_state.user_progress["completed_resources"])} recursos concluídos</small>
         </div>
         """,
         unsafe_allow_html=True
     )
-
 
 if __name__ == "__main__":
     main()
