@@ -92,7 +92,7 @@ def display_subject_resources(subject_data):
 
 def main():
     # Título principal
-    st.title("Plano de Estudos CNU 2025")
+    st.title("Plano de Estudos CNU 2025 - Engenharias e Arquitetura")
     st.subheader(
         "Analista de Gestão em Pesquisa e Investigação Biomédica (B4-13-B)")
 
