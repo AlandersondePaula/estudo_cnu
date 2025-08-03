@@ -303,7 +303,7 @@ def main():
         """
         <div style=\'text-align: center; color: #666;\'>
             📚 Plano de Estudos CNU 2025 - Banca FGV<br>
-            <a href="mailto:seuemail@exemplo.com?subject=Assunto do Email&body=Corpo do Email">Enviar Email</a><br>
+            <a href="mailto:alanderson.paula@gmail.com">Enviar Email alanderson.paula@gmail.com</a><br>
             alanderson.paula@gmail.com | © 2025
 
         </div>
