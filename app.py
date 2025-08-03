@@ -114,32 +114,32 @@ def create_study_schedule(start_date, end_date_fixed, weeks_data):
     # Calcular o número total de dias disponíveis para estudo
     total_days_available = (end_date_fixed - start_date).days + 1
 
-    # Calcular o número de semanas de estudo com base nos dados fornecidos
+    # Calcular o número de Etapas de estudo com base nos dados fornecidos
     num_study_weeks = len([week_name for week_name, subjects in weeks_data.items() if subjects])
 
-    # Calcular a duração média de cada semana
+    # Calcular a duração média de cada Etapa
     if num_study_weeks > 0:
         avg_days_per_week = total_days_available / num_study_weeks
     else:
-        return schedule # Retorna vazio se não houver semanas de estudo
+        return schedule # Retorna vazio se não houver Etapas de estudo
 
     current_date = start_date
 
     for week_name, subjects in weeks_data.items():
-        if not subjects:  # Pula semanas vazias
+        if not subjects:  # Pula Etapas vazias
             continue
 
         week_start = current_date
 
-        # Calcula a data de término da semana com base na duração média
+        # Calcula a data de término da Etapa com base na duração média
         week_end = week_start + timedelta(days=int(avg_days_per_week) - 1)
 
-        # Ajusta a última semana para terminar exatamente na data fixa
-        if week_name == list(weeks_data.keys())[-1]: # Verifica se é a última semana não vazia
+        # Ajusta a última Etapa para terminar exatamente na data fixa
+        if week_name == list(weeks_data.keys())[-1]: # Verifica se é a última Etapa não vazia
             week_end = end_date_fixed
 
         schedule.append({
-            "Semana": week_name,
+            "Etapa": week_name,
             "Data Início": week_start.strftime("%d/%m/%Y"),
             "Data Fim": week_end.strftime("%d/%m/%Y"),
             "Matérias": list(subjects.keys())
@@ -185,6 +185,12 @@ def display_subject_resources(subject_data, week_name, subject_name):
                         if is_completed:
                             st.success("✅ Concluído")
 
+def days_float_to_days_hours(days_float):
+    days = int(days_float)
+    hours = int(round((days_float - days) * 24))
+    return f"{days}d e {hours}h"
+
+
 def main():
     # Inicializar dados do usuário
     initialize_user_data()
@@ -219,7 +225,7 @@ def main():
     # Opções de visualização
     view_option = st.sidebar.selectbox(
         "Escolha a visualização:",
-        ["📅 Cronograma Geral", "📖 Estudo por Semana", "📊 Progresso", "🔍 Buscar Recursos", "⚙️ Dados e Backup"]
+        ["📅 Cronograma Geral", "📖 Estudo por Etapa", "📊 Progresso", "🔍 Buscar Recursos", "⚙️ Dados e Backup"]
     )
 
     if view_option == "📅 Cronograma Geral":
@@ -252,26 +258,30 @@ def main():
             df_schedule["Matérias"] = df_schedule["Matérias"].apply(lambda x: ", ".join(x))
             st.dataframe(df_schedule, use_container_width=True)
 
+            exit_text = days_float_to_days_hours(avg_days_per_week)
+            
             # Estatísticas
-            col1, col2, col3 = st.columns(3)
+            col1, col2, col3, col4 = st.columns(4)
             with col1:
-                st.metric("Total de Semanas", len(schedule))
+                st.metric("Total de Etapas", len(schedule))
             with col2:
+                st.metric("Período por Etapas", exit_text)
+            with col3:
                 total_subjects = sum(len(week_data["Matérias"]) for week_data in schedule if week_data["Matérias"])
                 st.metric("Total de Matérias", total_subjects)
-            with col3:
+            with col4:
                 end_date = datetime.strptime(schedule[-1]["Data Fim"], "%d/%m/%Y").date()
                 duration = (end_date - start_date).days
                 st.metric("Duração (dias)", duration)
 
-    elif view_option == "📖 Estudo por Semana":
-        st.header("Estudo Detalhado por Semana")
+    elif view_option == "📖 Estudo por Etapa":
+        st.header("Estudo Detalhado por Etapa")
 
-        # Filtrar semanas que têm conteúdo
+        # Filtrar Etapas que têm conteúdo
         weeks_with_content = {k: v for k, v in study_data.items() if v}
 
-        # Seletor de semana
-        selected_week = st.selectbox("Selecione a semana:", list(weeks_with_content.keys()))
+        # Seletor de Etapa
+        selected_week = st.selectbox("Selecione a Etapa:", list(weeks_with_content.keys()))
 
         if selected_week and selected_week in weeks_with_content:
             week_data = weeks_with_content[selected_week]
@@ -360,8 +370,8 @@ def main():
                     subjects_str = ", ".join(session["subjects"])
                     st.write(f"📅 {session_date} - ⏱️ {session['duration_minutes']}min - 📚 {subjects_str}")
 
-            # Gráfico de progresso por semana
-            st.subheader("📊 Progresso por Semana")
+            # Gráfico de progresso por Etapa
+            st.subheader("📊 Progresso por Etapa")
 
             week_progress = {}
             completed_set = set(st.session_state.user_progress["completed_resources"])
@@ -376,7 +386,7 @@ def main():
                 for subject_name, subject_data in week_data.items():
                     for resource_type, resources in subject_data.items():
                         week_total += len(resources)
-                        # Contar recursos concluídos desta semana
+                        # Contar recursos concluídos desta Etapa
                         for i, resource in enumerate(resources, 1):
                             resource_key = f"{week_name}_{subject_name}_{resource_type}_{i}_{resource['description'][:20]}"
                             if resource_key in completed_set:
@@ -386,8 +396,8 @@ def main():
                     week_progress[week_name] = (week_completed / week_total) * 100
 
             if week_progress:
-                df_progress = pd.DataFrame(list(week_progress.items()), columns=["Semana", "Progresso (%)"])
-                st.bar_chart(df_progress.set_index("Semana"))
+                df_progress = pd.DataFrame(list(week_progress.items()), columns=["Etapa", "Progresso (%)"])
+                st.bar_chart(df_progress.set_index("Etapa"))
 
     elif view_option == "🔍 Buscar Recursos":
         st.header("Buscar Recursos")
@@ -407,7 +417,7 @@ def main():
                                 is_completed = is_resource_completed(resource_key)
                                 
                                 search_results.append({
-                                    "Semana": week_name,
+                                    "Etapa": week_name,
                                     "Matéria": subject_name,
                                     "Tipo": resource_type,
                                     "Descrição": resource['description'],
@@ -422,7 +432,7 @@ def main():
                 for i, result in enumerate(search_results, 1):
                     is_completed = result["Concluído"] == "✅"
                     with st.expander(f"{result['Concluído']} {i}. {result['Descrição'][:80]}..."):
-                        st.write(f"**Semana:** {result['Semana']}")
+                        st.write(f"**Etapa:** {result['Etapa']}")
                         st.write(f"**Matéria:** {result['Matéria']}")
                         st.write(f"**Tipo:** {result['Tipo']}")
                         st.write(f"**Descrição:** {result['Descrição']}")
