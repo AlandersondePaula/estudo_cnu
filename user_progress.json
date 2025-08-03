@@ -1,0 +1,33 @@
+{
+  "start_date": "2025-08-4",
+  "completed_resources": [
+    "Semana 1_Português_Videos_1_Concordância verbal",
+    "Semana 1_Português_PDFs_1_Gramática básica",
+    "Semana 2_Matemática_Questões_1_Exercícios de álgebra",
+    "Semana 3_Direito_Questões_1_Questões de constitucional"
+  ],
+  "settings": {
+    "notifications": true,
+    "theme": "light"
+  },
+  "last_access": "2025-08-03T14:30:25.123456",
+  "study_sessions": [
+    {
+      "date": "2025-01-15T09:00:00.000000",
+      "duration_minutes": 120,
+      "subjects": ["Português"]
+    },
+    {
+      "date": "2025-01-16T14:30:00.000000",
+      "duration_minutes": 90,
+      "subjects": ["Matemática"]
+    },
+    {
+      "date": "2025-01-17T10:15:00.000000",
+      "duration_minutes": 150,
+      "subjects": ["Português", "Direito"]
+    }
+  ],
+  "initialization_date": "2025-08-04T08:00:00.000000",
+  "export_date": "2025-08-03T14:30:25.123456"
+}
