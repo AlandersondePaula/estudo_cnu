@@ -302,7 +302,7 @@ def main():
         """
         <div style=\'text-align: center; color: #666;\'>
             📚 Plano de Estudos CNU 2025 - Banca FGV<br>
-            <a href="mailto:alanderson.paula@gmail.com">alanderson.paula@gmail.com</a> | © 2025
+            <a href="mailto:alanderson.paula@gmail.com?subject=Projeto Streamlit CNU 2025">alanderson.paula@gmail.com</a> | © 2025
 
         </div>
         """,
