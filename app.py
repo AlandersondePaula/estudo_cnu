@@ -125,7 +125,7 @@ def main():
 
         # Data de término fixa
         end_date_fixed = datetime(2025, 10, 4).date() # 04/10/2025
-        st.write(f"**Data de término da prova:** {end_date_fixed.strftime('%d/%m/%Y')}")
+        st.write(f"**Data de término dos estudos para a prova:** {end_date_fixed.strftime('%d/%m/%Y')}")
 
         # Criar cronograma
         schedule = create_study_schedule(start_date, end_date_fixed, study_data)
